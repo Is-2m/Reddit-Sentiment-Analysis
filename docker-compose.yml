@@ -30,10 +30,17 @@ services:
     hostname: hadoop-worker1
     volumes:
       - hadoop_datanode1:/opt/hadoop/dfs/data
+      - ./src:/app/src
+      - ./requirements.txt:/app/requirements.txt
     environment:
       - JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
     depends_on:
       - hadoop-master
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9864"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - hadoop_network
 
@@ -45,10 +52,17 @@ services:
     hostname: hadoop-worker2
     volumes:
       - hadoop_datanode2:/opt/hadoop/dfs/data
+      - ./src:/app/src
+      - ./requirements.txt:/app/requirements.txt
     environment:
       - JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
     depends_on:
       - hadoop-master
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9864"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - hadoop_network
 
