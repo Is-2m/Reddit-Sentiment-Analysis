@@ -1,0 +1,76 @@
+version: '3'
+
+services:
+  hadoop-master:
+    build: 
+      context: .
+      dockerfile: docker/hadoop-master/Dockerfile
+    hostname: hadoop-master
+    ports:
+      - "9870:9870"  # Hadoop NameNode web UI
+      - "8088:8088"  # ResourceManager web UI
+    networks:
+      - hadoop_network
+
+  hadoop-worker1:
+    build:
+      context: .
+      dockerfile: docker/hadoop-worker/Dockerfile
+    hostname: hadoop-worker1
+    networks:
+      - hadoop_network
+
+  hadoop-worker2:
+    build:
+      context: .
+      dockerfile: docker/hadoop-worker/Dockerfile
+    hostname: hadoop-worker2
+    networks:
+      - hadoop_network
+
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+      - "2181:2181"
+    networks:
+      - hadoop_network
+
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "reddit_posts:1:1"
+    networks:
+      - hadoop_network
+
+  hbase:
+    image: harisekhon/hbase
+    ports:
+      - "16010:16010"
+    networks:
+      - hadoop_network
+
+  spark-master:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    networks:
+      - hadoop_network
+
+  spark-worker:
+    image: bitnami/spark:latest
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    networks:
+      - hadoop_network
+
+networks:
+  hadoop_network:
+    driver: bridge
