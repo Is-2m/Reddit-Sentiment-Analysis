@@ -1,3 +1,5 @@
+docker-compose up -d
+
 # First terminal - Start Reddit Producer
 python src/producer/reddit_producer.py
 

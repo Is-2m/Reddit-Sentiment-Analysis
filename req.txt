@@ -28,6 +28,7 @@ numpy==2.2.0
 packaging==24.2
 pandas==2.2.3
 pillow==11.0.0
+plotly==5.24.1
 ply==3.11
 praw==7.8.1
 prawcore==2.4.0

@@ -7,16 +7,28 @@ import time
 
 
 class RedditStreamProducer:
-    def __init__(self, client_id, client_secret,password, user_agent,username, kafka_bootstrap_servers):
+    def __init__(
+        self,
+        client_id,
+        client_secret,
+        password,
+        user_agent,
+        username,
+        kafka_bootstrap_servers,
+    ):
         self.reddit = praw.Reddit(
-            client_id=client_id, client_secret=client_secret,password=password, user_agent=user_agent,username=username
+            client_id=client_id,
+            client_secret=client_secret,
+            password=password,
+            user_agent=user_agent,
+            username=username,
         )
 
         self.producer = KafkaProducer(
             bootstrap_servers=kafka_bootstrap_servers,
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
-            api_version=(2, 5, 0),  
-            security_protocol="PLAINTEXT"  
+            api_version=(2, 5, 0),
+            security_protocol="PLAINTEXT",
         )
 
         self.setup_logging()
@@ -64,4 +76,4 @@ if __name__ == "__main__":
         kafka_bootstrap_servers=["localhost:9092"],
     )
 
-    producer.stream_subreddit("all", "reddit_posts")
+    producer.stream_subreddit("mademesmile+confessions", "reddit_posts")
