@@ -7,16 +7,16 @@ import happybase
 
 class SparkStreamProcessor:
     def __init__(self):
-        self.spark = SparkSession.builder.appName(
-            "RedditSentimentAnalysis"
-        ).getOrCreate()
-
-        self.sentiment_analyzer = pipeline(
-            "sentiment-analysis",
-            model="nlptown/bert-base-multilingual-uncased-sentiment",
+        self.spark = (
+            SparkSession.builder.appName("RedditSentimentAnalysis")
+            .config(
+                "spark.jars.packages",
+                "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0",
+            )
+            .getOrCreate()
         )
 
-        self.hbase_connection = happybase.Connection("localhost")
+        self.hbase_connection = happybase.Connection("localhost", port=9090)
         self.ensure_hbase_table()
 
     def ensure_hbase_table(self):
@@ -25,34 +25,37 @@ class SparkStreamProcessor:
                 "reddit_sentiments", {"post_data": dict(), "sentiment": dict()}
             )
 
-    def analyze_sentiment(self, text):
-        result = self.sentiment_analyzer(text)[0]
+    @staticmethod
+    def analyze_sentiment(text):
+        # Initialize pipeline for each analysis to avoid serialization issues
+        sentiment_analyzer = pipeline(
+            "sentiment-analysis",
+            model="nlptown/bert-base-multilingual-uncased-sentiment",
+        )
+        result = sentiment_analyzer(text)[0]
         return result["label"], result["score"]
 
     def process_batch(self, df, epoch_id):
-        # Convert DataFrame to RDD for parallel processing
-        analyzed_rdd = df.rdd.map(
-            lambda row: {
-                "id": row.id,
-                "text": row.text,
-                "sentiment": self.analyze_sentiment(row.text),
-            }
-        )
+        # Process each row individually
+        for row in df.collect():
+            try:
+                sentiment_label, sentiment_score = self.analyze_sentiment(row.text)
 
-        # Store in HBase
-        table = self.hbase_connection.table("reddit_sentiments")
-
-        for record in analyzed_rdd.collect():
-            table.put(
-                record["id"].encode(),
-                {
-                    b"post_data:text": record["text"].encode(),
-                    b"sentiment:label": str(record["sentiment"][0]).encode(),
-                    b"sentiment:score": str(record["sentiment"][1]).encode(),
-                },
-            )
+                # Store in HBase
+                table = self.hbase_connection.table("reddit_sentiments")
+                table.put(
+                    row.id.encode(),
+                    {
+                        b"post_data:text": row.text.encode(),
+                        b"sentiment:label": str(sentiment_label).encode(),
+                        b"sentiment:score": str(sentiment_score).encode(),
+                    },
+                )
+            except Exception as e:
+                print(f"Error processing row {row.id}: {str(e)}")
 
     def start_streaming(self):
+        # Define schema for the incoming data
         schema = StructType(
             [
                 StructField("id", StringType(), True),
@@ -66,22 +69,27 @@ class SparkStreamProcessor:
             ]
         )
 
+        # Create streaming DataFrame from Kafka
         streaming_df = (
             self.spark.readStream.format("kafka")
-            .option("kafka.bootstrap.servers", "kafka:9092")
+            .option("kafka.bootstrap.servers", "localhost:9092")
             .option("subscribe", "reddit_posts")
             .load()
         )
 
+        # Parse JSON data from Kafka
         parsed_df = streaming_df.select(
             from_json(col("value").cast("string"), schema).alias("data")
         ).select("data.*")
 
+        # Start the streaming query
         query = parsed_df.writeStream.foreachBatch(self.process_batch).start()
 
+        # Wait for the streaming to finish
         query.awaitTermination()
 
 
 if __name__ == "__main__":
+    # Initialize and start the processor
     processor = SparkStreamProcessor()
     processor.start_streaming()

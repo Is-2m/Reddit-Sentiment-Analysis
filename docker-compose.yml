@@ -7,6 +7,10 @@ services:
       dockerfile: docker/hadoop-master/Dockerfile
     container_name: hadoop-master
     hostname: hadoop-master
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
       - "9870:9870"  # Hadoop NameNode web UI
       - "8088:8088"  # ResourceManager web UI
@@ -23,6 +27,10 @@ services:
       dockerfile: docker/hadoop-worker/Dockerfile
     container_name: hadoop-worker1
     hostname: hadoop-worker1
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     volumes:
       - ./hadoop_data/datanode1:/opt/hadoop/dfs/data
     environment:
@@ -38,6 +46,10 @@ services:
       dockerfile: docker/hadoop-worker/Dockerfile
     container_name: hadoop-worker2
     hostname: hadoop-worker2
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     volumes:
       - ./hadoop_data/datanode2:/opt/hadoop/dfs/data
     environment:
@@ -62,6 +74,10 @@ services:
   kafka:
     image: wurstmeister/kafka
     container_name: kafka
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
       - "9092:9092"
     environment:
@@ -79,6 +95,11 @@ services:
     container_name: hbase
     ports:
       - "16010:16010"
+      - "9090:9090"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     environment:
       HBASE_MANAGES_ZK: "false"
       HBASE_ZOOKEEPER_QUORUM: zookeeper
@@ -91,6 +112,10 @@ services:
   spark-master:
     image: bitnami/spark:latest
     container_name: spark-master
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     environment:
       - SPARK_MODE=master
       - SPARK_RPC_AUTHENTICATION_ENABLED=no
@@ -106,6 +131,10 @@ services:
   spark-worker:
     image: bitnami/spark:latest
     container_name: spark-worker
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077

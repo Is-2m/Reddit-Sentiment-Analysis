@@ -1,0 +1,8 @@
+# First terminal - Start Reddit Producer
+python src/producer/reddit_producer.py
+
+# Second terminal - Start Spark Consumer
+python src/consumer/spark_consumer.py
+
+# Third terminal - Start Dashboard
+streamlit run src/visualization/dashboard.py
