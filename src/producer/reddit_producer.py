@@ -7,14 +7,16 @@ import time
 
 
 class RedditStreamProducer:
-    def __init__(self, client_id, client_secret, user_agent, kafka_bootstrap_servers):
+    def __init__(self, client_id, client_secret,password, user_agent,username, kafka_bootstrap_servers):
         self.reddit = praw.Reddit(
-            client_id=client_id, client_secret=client_secret, user_agent=user_agent
+            client_id=client_id, client_secret=client_secret,password=password, user_agent=user_agent,username=username
         )
 
         self.producer = KafkaProducer(
             bootstrap_servers=kafka_bootstrap_servers,
             value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+            api_version=(2, 5, 0),  
+            security_protocol="PLAINTEXT"  
         )
 
         self.setup_logging()
@@ -46,11 +48,19 @@ class RedditStreamProducer:
             self.logger.info(f"Sent post {post.id} to Kafka")
 
 
+CLIENT_ID = "dMceiJplOJXQJTZLgU1EKg"
+CLIENT_SECRET = "7XGpOgv6A4wpMIMdjH0XZtOsetm17g"
+USERNAME = "PastAcrobatic524"
+PASSWORD = "-dgPZs]34;-PdX~"
+USER_AGENT = "script:sentiment-analysis:v0.1 (by /u/PastAcrobatic524)"
+
 if __name__ == "__main__":
     producer = RedditStreamProducer(
-        client_id="your_client_id",
-        client_secret="your_client_secret",
-        user_agent="your_user_agent",
+        client_id=CLIENT_ID,
+        client_secret=CLIENT_SECRET,
+        password=PASSWORD,
+        user_agent=USER_AGENT,
+        username=USERNAME,
         kafka_bootstrap_servers=["localhost:9092"],
     )
 
