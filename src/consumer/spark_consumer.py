@@ -47,6 +47,9 @@ class SparkStreamProcessor:
                     row.id.encode(),
                     {
                         b"post_data:text": row.text.encode(),
+                        b"post_data:timestamp": str(
+                            row.timestamp.timestamp()
+                        ).encode(),  # Convert to Unix timestamp
                         b"sentiment:label": str(sentiment_label).encode(),
                         b"sentiment:score": str(sentiment_score).encode(),
                     },

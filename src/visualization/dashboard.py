@@ -15,15 +15,31 @@ class SentimentDashboard:
         
         data = []
         for key, value in self.table.scan():
-            timestamp = float(value[b'post_data:timestamp'])
-            if datetime.fromtimestamp(timestamp) > cutoff_time:
-                data.append({
-                    'id': key.decode(),
-                    'text': value[b'post_data:text'].decode(),
-                    'sentiment': value[b'sentiment:label'].decode(),
-                    'score': float(value[b'sentiment:score'].decode()),
-                    'timestamp': datetime.fromtimestamp(timestamp)
-                })
+            try:
+                # Get text and sentiment data
+                text = value.get(b'post_data:text', b'').decode()
+                sentiment = value.get(b'sentiment:label', b'').decode()
+                score = float(value.get(b'sentiment:score', b'0').decode())
+                
+                # Handle timestamp - with fallback to current time if missing
+                try:
+                    timestamp = float(value.get(b'post_data:timestamp', time.time()).decode())
+                except (ValueError, AttributeError):
+                    timestamp = time.time()
+                
+                post_time = datetime.fromtimestamp(timestamp)
+                
+                if post_time > cutoff_time:
+                    data.append({
+                        'id': key.decode(),
+                        'text': text,
+                        'sentiment': sentiment,
+                        'score': score,
+                        'timestamp': post_time
+                    })
+            except Exception as e:
+                print(f"Error processing record {key}: {str(e)}")
+                continue
         
         return pd.DataFrame(data)
 
@@ -37,6 +53,10 @@ class SentimentDashboard:
         # Get recent data
         df = self.get_recent_sentiments()
         
+        if df.empty:
+            st.warning("No data available in the last 5 minutes. Try refreshing.")
+            return
+            
         # Display metrics
         col1, col2, col3 = st.columns(3)
         
@@ -44,11 +64,11 @@ class SentimentDashboard:
             st.metric("Total Posts Analyzed", len(df))
         
         with col2:
-            positive_pct = (df['sentiment'] == 'POSITIVE').mean() * 100
+            positive_pct = (df['sentiment'] == 'POSITIVE').mean() * 100 if not df.empty else 0
             st.metric("Positive Sentiment %", f"{positive_pct:.1f}%")
         
         with col3:
-            negative_pct = (df['sentiment'] == 'NEGATIVE').mean() * 100
+            negative_pct = (df['sentiment'] == 'NEGATIVE').mean() * 100 if not df.empty else 0
             st.metric("Negative Sentiment %", f"{negative_pct:.1f}%")
         
         # Plot sentiment distribution
@@ -61,4 +81,10 @@ class SentimentDashboard:
 
 if __name__ == "__main__":
     dashboard = SentimentDashboard()
-    dashboard.render_dashboard()
+    while True:
+        try:
+            dashboard.render_dashboard()
+            time.sleep(1.5)  # Refresh every 5 seconds
+        except Exception as e:
+            st.error(f"An error occurred: {str(e)}")
+            # time.sleep(5)  # Wait before retrying
