@@ -96,13 +96,14 @@ services:
     ports:
       - "16010:16010"
       - "9090:9090"
+      - "16000:16000"
     ulimits:
       nofile:
         soft: 65536
         hard: 65536
     environment:
       HBASE_MANAGES_ZK: "false"
-      HBASE_ZOOKEEPER_QUORUM: zookeeper
+      HBASE_ZOOKEEPER_QUORUM: localhost
     depends_on:
       - hadoop-master
       - zookeeper

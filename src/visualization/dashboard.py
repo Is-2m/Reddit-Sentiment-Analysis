@@ -26,41 +26,48 @@ class SentimentDashboard:
             return "NEUTRAL"
 
     def get_recent_sentiments(self, minutes=5):
+        print("Fetching recent sentiments...")
         cutoff_time = datetime.now() - timedelta(minutes=minutes)
 
         data = []
-        for key, value in self.table.scan():
-            try:
-                text = value.get(b"post_data:text", b"").decode()
-                sentiment = value.get(b"sentiment:label", b"").decode()
-                score = float(value.get(b"sentiment:score", b"0").decode())
-
+        try:
+            print("Scanning HBase table...")
+            for key, value in self.table.scan():
                 try:
-                    timestamp = float(
-                        value.get(b"post_data:timestamp", time.time()).decode()
-                    )
-                except (ValueError, AttributeError):
-                    timestamp = time.time()
+                    text = value.get(b"post_data:text", b"").decode()
+                    sentiment = value.get(b"sentiment:label", b"").decode()
+                    score = float(value.get(b"sentiment:score", b"0").decode())
 
-                post_time = datetime.fromtimestamp(timestamp)
+                    try:
+                        timestamp = float(
+                            value.get(b"post_data:timestamp", time.time()).decode()
+                        )
+                    except (ValueError, AttributeError):
+                        timestamp = time.time()
 
-                if post_time > cutoff_time:
-                    data.append(
-                        {
-                            "id": key.decode(),
-                            "text": text,
-                            "original_sentiment": sentiment,  # Keep original sentiment
-                            "sentiment": self.convert_sentiment(
-                                sentiment
-                            ),  # Add converted sentiment
-                            "score": score,
-                            "timestamp": post_time,
-                        }
-                    )
-            except Exception as e:
-                print(f"Error processing record {key}: {str(e)}")
-                continue
+                    post_time = datetime.fromtimestamp(timestamp)
 
+                    if post_time > cutoff_time:
+                        data.append(
+                            {
+                                "id": key.decode(),
+                                "text": text,
+                                "original_sentiment": sentiment,  # Keep original sentiment
+                                "sentiment": self.convert_sentiment(
+                                    sentiment
+                                ),  # Add converted sentiment
+                                "score": score,
+                                "timestamp": post_time,
+                            }
+                        )
+                except Exception as e:
+                    print(f"Error processing record {key}: {str(e)}")
+                    continue
+        except Exception as e:
+            print(f"Error scanning HBase: {str(e)}")
+            raise
+
+        print(f"Found {len(data)} records")
         return pd.DataFrame(data)
 
     def render_dashboard(self):
@@ -128,7 +135,7 @@ if __name__ == "__main__":
     while True:
         try:
             dashboard.render_dashboard()
-            time.sleep(1.5)  # Refresh every 5 seconds
+            time.sleep(5)  # Refresh every 5 seconds
         except Exception as e:
             st.error(f"An error occurred: {str(e)}")
             # time.sleep(5)  # Wait before retrying
