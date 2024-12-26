@@ -8,8 +8,22 @@ import time
 
 class SentimentDashboard:
     def __init__(self):
-        self.connection = happybase.Connection("localhost")
-        self.table = self.connection.table("reddit_sentiments")
+        try:
+            self.connection = happybase.Connection("localhost", port=9090)
+            print("Available tables:", self.connection.tables())  # Debug print
+
+            if b"reddit_sentiments" not in self.connection.tables():
+                raise Exception("reddit_sentiments table not found")
+
+            self.table = self.connection.table("reddit_sentiments")
+            # Try to get one row to verify connection
+            for key, value in self.table.scan(limit=1):
+                print("Successfully read one row from HBase")
+                print(f"Sample key: {key}")
+                break
+        except Exception as e:
+            print(f"Error initializing HBase connection: {e}")
+            raise
 
     @staticmethod
     def convert_sentiment(stars):
@@ -25,40 +39,49 @@ class SentimentDashboard:
         except:
             return "NEUTRAL"
 
-    def get_recent_sentiments(self, minutes=5):
+    def get_recent_sentiments(self, hours=24):  # Changed from minutes=5 to hours=24
         print("Fetching recent sentiments...")
-        cutoff_time = datetime.now() - timedelta(minutes=minutes)
+        cutoff_time = datetime.now() - timedelta(
+            hours=hours
+        )  # Changed from minutes to hours
+        print(f"Cutoff time: {cutoff_time}")
 
         data = []
         try:
             print("Scanning HBase table...")
             for key, value in self.table.scan():
+                print(f"Processing key: {key}")
                 try:
                     text = value.get(b"post_data:text", b"").decode()
                     sentiment = value.get(b"sentiment:label", b"").decode()
                     score = float(value.get(b"sentiment:score", b"0").decode())
 
                     try:
-                        timestamp = float(
-                            value.get(b"post_data:timestamp", time.time()).decode()
+                        timestamp_bytes = value.get(
+                            b"post_data:timestamp", str(time.time()).encode()
                         )
-                    except (ValueError, AttributeError):
+                        timestamp = float(timestamp_bytes.decode())
+                        post_time = datetime.fromtimestamp(timestamp)
+                        print(f"Timestamp: {timestamp}, Post time: {post_time}")
+                    except (ValueError, AttributeError) as e:
+                        print(f"Timestamp error: {e}")
                         timestamp = time.time()
-
-                    post_time = datetime.fromtimestamp(timestamp)
+                        post_time = datetime.fromtimestamp(timestamp)
 
                     if post_time > cutoff_time:
                         data.append(
                             {
                                 "id": key.decode(),
                                 "text": text,
-                                "original_sentiment": sentiment,  # Keep original sentiment
-                                "sentiment": self.convert_sentiment(
-                                    sentiment
-                                ),  # Add converted sentiment
+                                "original_sentiment": sentiment,
+                                "sentiment": self.convert_sentiment(sentiment),
                                 "score": score,
                                 "timestamp": post_time,
                             }
+                        )
+                    else:
+                        print(
+                            f"Skipping record: post_time {post_time} is before cutoff {cutoff_time}"
                         )
                 except Exception as e:
                     print(f"Error processing record {key}: {str(e)}")
@@ -75,7 +98,7 @@ class SentimentDashboard:
 
         # Add refresh button
         if st.button("Refresh Data"):
-            st.experimental_rerun()
+            st.rerun()  # Using rerun() instead of experimental_rerun()
 
         # Get recent data
         df = self.get_recent_sentiments()
@@ -132,10 +155,9 @@ class SentimentDashboard:
 
 if __name__ == "__main__":
     dashboard = SentimentDashboard()
-    while True:
-        try:
-            dashboard.render_dashboard()
-            time.sleep(5)  # Refresh every 5 seconds
-        except Exception as e:
-            st.error(f"An error occurred: {str(e)}")
-            # time.sleep(5)  # Wait before retrying
+
+    # Instead of using a while loop, we let Streamlit handle the refresh
+    try:
+        dashboard.render_dashboard()
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")

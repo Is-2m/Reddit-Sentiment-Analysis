@@ -8,3 +8,5 @@ python src/consumer/spark_consumer.py
 
 # Third terminal - Start Dashboard
 streamlit run src/visualization/dashboard.py
+
+streamlit run src/visualization/dashboard.py --server.maxUploadSize 1024 --server.maxMessageSize 1024 --client.showErrorDetails True --client.toolbarMode "auto" --server.runOnSave true --client.autoRefreshLimit 5

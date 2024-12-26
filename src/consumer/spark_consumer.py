@@ -21,6 +21,7 @@ class SparkStreamProcessor:
         )
 
         self.hbase_connection = happybase.Connection("localhost", port=9090)
+        # self.hbase_connection = happybase.Connection("hbase", port=9090)
         # Add this line to check connection
         self.check_hbase_connection()
         self.ensure_hbase_table()
@@ -33,9 +34,6 @@ class SparkStreamProcessor:
         except Exception as e:
             print(f"HBase connection failed: {str(e)}")
             raise
-
-        # self.hbase_connection = happybase.Connection("localhost", port=16000)
-        # self.ensure_hbase_table()
 
     def ensure_hbase_table(self):
         if b"reddit_sentiments" not in self.hbase_connection.tables():
@@ -112,6 +110,7 @@ class SparkStreamProcessor:
             streaming_df = (
                 self.spark.readStream.format("kafka")
                 .option("kafka.bootstrap.servers", "localhost:9092")
+                # .option("kafka.bootstrap.servers", "kafka:9092")
                 .option("subscribe", "reddit_posts")
                 .option("startingOffsets", "earliest")
                 .load()

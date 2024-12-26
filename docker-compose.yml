@@ -14,6 +14,7 @@ services:
     ports:
       - "9870:9870"  # Hadoop NameNode web UI
       - "8088:8088"  # ResourceManager web UI
+      - "8501:8501"  # Streamlit web UI
     volumes:
       - ./hadoop_data/namenode:/opt/hadoop/dfs/name
     environment:
@@ -65,7 +66,7 @@ services:
     ulimits:
       nofile:
         soft: 65536
-        hard: 65536    
+        hard: 65536
     ports:
       - "2181:2181"
     networks:

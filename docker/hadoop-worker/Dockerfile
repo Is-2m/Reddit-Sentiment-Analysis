@@ -33,14 +33,21 @@ RUN mkdir -p /opt/hadoop/dfs/data
 RUN pip3 install --no-cache-dir --upgrade pip && \
     pip3 install --no-cache-dir pyspark pandas numpy scikit-learn
 
+# Create directory for the sentiment analysis model
+RUN mkdir -p /app/models/sentiment_analyzer
+
 # Set working directory
 WORKDIR /app
 
 # Copy application files
 COPY src/ /app/src/
 COPY requirements.txt /app/
+# Copy the pre-downloaded sentiment analysis model
+# Make sure this path matches where you saved the model locally
+COPY saved_model /app/models/sentiment_analyzer
 
 # Install Python dependencies
+# Adding torch and transformers explicitly since they're needed for the model
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Set environment variables
@@ -50,6 +57,8 @@ ENV PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
 ENV HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
 ENV HDFS_DATANODE_USER=root
 ENV YARN_NODEMANAGER_USER=root
+# Add environment variable for model path so it's easily configurable
+ENV MODEL_PATH=/app/models/sentiment_analyzer
 
 # Expose DataNode and NodeManager ports
 EXPOSE 9864 8042
@@ -57,4 +66,5 @@ EXPOSE 9864 8042
 # Start Hadoop DataNode service
 COPY docker/hadoop-worker/start-datanode.sh /start-datanode.sh
 RUN chmod +x /start-datanode.sh
+
 CMD ["/start-datanode.sh"]

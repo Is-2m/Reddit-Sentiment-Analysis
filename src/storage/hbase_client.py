@@ -4,9 +4,6 @@ from typing import Dict, Optional
 from datetime import datetime
 
 
-
-
-
 class HBaseClient:
     def __init__(
         self,

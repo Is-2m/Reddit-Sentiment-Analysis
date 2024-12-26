@@ -73,7 +73,8 @@ if __name__ == "__main__":
         password=PASSWORD,
         user_agent=USER_AGENT,
         username=USERNAME,
+        # kafka_bootstrap_servers=["kafka:9092"],
         kafka_bootstrap_servers=["localhost:9092"],
     )
 
-    producer.stream_subreddit("mademesmile+confessions", "reddit_posts")
+    producer.stream_subreddit("mademesmile+suicidewatch+happy+linux", "reddit_posts")
